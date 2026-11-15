@@ -1,0 +1,28 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Go
+/bin/
+*.test
+*.out
+coverage.txt
+
+# Node
+node_modules/
+web/dist/
+web/coverage/
+*.tsbuildinfo
+
+# Logs and runtime files
+*.log
+*.pid
+.DS_Store
+
+# Editors
+.idea/
+.vscode/
+
+# Local planning artifacts
+.trae/
