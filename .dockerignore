@@ -1,0 +1,14 @@
+.git
+.trae
+.env
+.env.*
+!.env.example
+bin
+node_modules
+web/node_modules
+web/dist
+web/coverage
+*.log
+*.test
+coverage.txt
+README.md
