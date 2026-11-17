@@ -40,13 +40,13 @@ export default function LoginPage() {
         <div className="login-form-wrap">
           <div className="login-mobile-brand"><span>G</span>GoPress</div>
           <p className="login-form-kicker">WELCOME BACK</p><h2>欢迎回来</h2><p className="login-subtitle">登录内容工作台，继续你的创作。</p>
-          <Form form={form} layout="vertical" size="large" onFinish={(values) => { setError(''); login.mutate(values); }} requiredMark={false} initialValues={import.meta.env.DEV ? { email: 'admin@gopress.dev', password: 'GoPress123!' } : undefined}>
+          <Form form={form} layout="vertical" size="large" onFinish={(values) => { setError(''); login.mutate(values); }} requiredMark={false}>
             <Form.Item name="email" label="邮箱地址" rules={[{ required: true, message: '请输入邮箱地址' }, { type: 'email', message: '请输入有效的邮箱地址' }]}><Input prefix={<MailOutlined />} placeholder="name@example.com" autoComplete="email" /></Form.Item>
             <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }]}><Input.Password prefix={<LockOutlined />} placeholder="输入你的密码" autoComplete="current-password" /></Form.Item>
             {error && <div className="login-error" role="alert">{error}</div>}
             <Button type="primary" htmlType="submit" block loading={login.isPending} className="login-submit">登录工作台 <ArrowRightOutlined /></Button>
           </Form>
-          {import.meta.env.DEV && <div className="demo-account"><CheckCircleFilled /><div><strong>开发环境演示账号</strong><p>admin@gopress.dev</p><p>GoPress123!</p></div><button onClick={() => form.setFieldsValue({ email: 'admin@gopress.dev', password: 'GoPress123!' })}>填入</button></div>}
+          {import.meta.env.DEV && <div className="demo-account"><CheckCircleFilled /><div><strong>开发环境</strong><p>账号来自 .env 中的 ADMIN_EMAIL 与 ADMIN_PASSWORD</p></div></div>}
           <p className="login-security"><LockOutlined /> 通过安全 Cookie 保持会话，访问令牌不会写入本地存储。</p>
         </div>
       </section>

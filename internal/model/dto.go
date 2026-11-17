@@ -11,6 +11,15 @@ type UserDTO struct {
 	Role   string `json:"role"`
 }
 
+// PublicUserDTO is what anonymous readers may see. It intentionally omits the
+// email so article payloads cannot be harvested for phishing.
+type PublicUserDTO struct {
+	ID     uint   `json:"id"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar"`
+	Bio    string `json:"bio"`
+}
+
 type CategoryDTO struct {
 	ID          uint      `json:"id"`
 	Name        string    `json:"name"`
@@ -29,19 +38,19 @@ type TagDTO struct {
 }
 
 type PostSummary struct {
-	ID          uint         `json:"id"`
-	Title       string       `json:"title"`
-	Slug        string       `json:"slug"`
-	Excerpt     string       `json:"excerpt"`
-	CoverImage  string       `json:"cover_image"`
-	Status      string       `json:"status"`
-	CategoryID  *uint        `json:"category_id"`
-	Category    *CategoryDTO `json:"category"`
-	Tags        []TagDTO     `json:"tags"`
-	Author      UserDTO      `json:"author"`
-	PublishedAt *time.Time   `json:"published_at"`
-	CreatedAt   time.Time    `json:"created_at"`
-	UpdatedAt   time.Time    `json:"updated_at"`
+	ID          uint          `json:"id"`
+	Title       string        `json:"title"`
+	Slug        string        `json:"slug"`
+	Excerpt     string        `json:"excerpt"`
+	CoverImage  string        `json:"cover_image"`
+	Status      string        `json:"status"`
+	CategoryID  *uint         `json:"category_id"`
+	Category    *CategoryDTO  `json:"category"`
+	Tags        []TagDTO      `json:"tags"`
+	Author      PublicUserDTO `json:"author"`
+	PublishedAt *time.Time    `json:"published_at"`
+	CreatedAt   time.Time     `json:"created_at"`
+	UpdatedAt   time.Time     `json:"updated_at"`
 }
 
 type PostDetail struct {
@@ -54,6 +63,12 @@ func ToUserDTO(user User) UserDTO {
 	return UserDTO{
 		ID: user.ID, Name: user.Name, Email: user.Email,
 		Avatar: user.Avatar, Bio: user.Bio, Role: user.Role,
+	}
+}
+
+func ToPublicUserDTO(user User) PublicUserDTO {
+	return PublicUserDTO{
+		ID: user.ID, Name: user.Name, Avatar: user.Avatar, Bio: user.Bio,
 	}
 }
 
@@ -83,7 +98,7 @@ func ToPostSummary(post Post) PostSummary {
 	return PostSummary{
 		ID: post.ID, Title: post.Title, Slug: post.Slug, Excerpt: post.Excerpt,
 		CoverImage: post.CoverImage, Status: post.Status, CategoryID: post.CategoryID,
-		Category: category, Tags: tags, Author: ToUserDTO(post.Author),
+		Category: category, Tags: tags, Author: ToPublicUserDTO(post.Author),
 		PublishedAt: post.PublishedAt, CreatedAt: post.CreatedAt, UpdatedAt: post.UpdatedAt,
 	}
 }

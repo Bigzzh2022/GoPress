@@ -32,7 +32,7 @@ func NewHandler(db *gorm.DB, publicCache *cache.Cache) *Handler {
 
 func (h *Handler) Public(c *gin.Context) {
 	key := h.cache.PublicKey(c, "profile", "site")
-	var cached model.UserDTO
+	var cached model.PublicUserDTO
 	if h.cache.GetJSON(c, key, &cached) {
 		response.OK(c, cached)
 		return
@@ -42,7 +42,9 @@ func (h *Handler) Public(c *gin.Context) {
 		h.handleError(c, err)
 		return
 	}
-	dto := model.ToUserDTO(user)
+	// The public profile deliberately omits the email address; it is the same
+	// mailbox that signs in to the admin console.
+	dto := model.ToPublicUserDTO(user)
 	h.cache.SetJSON(c, key, dto)
 	response.OK(c, dto)
 }

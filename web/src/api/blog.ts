@@ -6,8 +6,8 @@ import type {
   PostDetail,
   PostQuery,
   PostSummary,
+  PublicUser,
   Tag,
-  User,
 } from '../types';
 
 const unwrap = <T,>(promise: Promise<{ data: ApiResponse<T> }>) =>
@@ -22,5 +22,5 @@ export const blogApi = {
     unwrap(api.get<ApiResponse<PostSummary[]>>(`/posts/${encodeURIComponent(slug)}/related`)),
   categories: () => unwrap(api.get<ApiResponse<Category[]>>('/categories')),
   tags: () => unwrap(api.get<ApiResponse<Tag[]>>('/tags')),
-  profile: () => unwrap(api.get<ApiResponse<User>>('/profile')),
+  profile: () => unwrap(api.get<ApiResponse<PublicUser>>('/profile')),
 };

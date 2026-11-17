@@ -20,16 +20,24 @@ func CORS(origins []string) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
+		c.Header("Vary", "Origin")
 		origin := strings.TrimRight(c.GetHeader("Origin"), "/")
 		if origin != "" {
-			_, ok := allowed[origin]
-			if allowAny || ok {
+			if allowAny {
+				// A wildcard must never be combined with credentials: echoing an
+				// arbitrary origin plus Allow-Credentials lets any site read
+				// authenticated responses. Without the credentials header browsers
+				// still allow bearer-token requests from any origin.
+				c.Header("Access-Control-Allow-Origin", "*")
+				c.Header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+				c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+				c.Header("Access-Control-Max-Age", "600")
+			} else if _, ok := allowed[origin]; ok {
 				c.Header("Access-Control-Allow-Origin", origin)
 				c.Header("Access-Control-Allow-Credentials", "true")
 				c.Header("Access-Control-Allow-Headers", "Authorization, Content-Type")
 				c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 				c.Header("Access-Control-Max-Age", "600")
-				c.Header("Vary", "Origin")
 			}
 		}
 		if c.Request.Method == http.MethodOptions {

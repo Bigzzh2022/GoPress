@@ -26,6 +26,14 @@ export interface User {
   role: string;
 }
 
+// Readers only ever receive the author fields below: the API omits the email.
+export interface PublicUser {
+  id: number;
+  name: string;
+  avatar: string;
+  bio: string;
+}
+
 export interface PostSummary {
   id: number;
   title: string;
@@ -36,7 +44,7 @@ export interface PostSummary {
   category_id: number | null;
   category: Category | null;
   tags: Tag[];
-  author: User;
+  author: PublicUser;
   published_at: string | null;
   created_at: string;
   updated_at: string;

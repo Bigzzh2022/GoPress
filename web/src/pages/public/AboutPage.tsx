@@ -27,7 +27,7 @@ export default function AboutPage() {
               <h2>{profile?.name || 'GoPress 作者'}</h2>
               <p>{profile?.bio || '专注于 Go 与云原生技术，记录真实世界里的软件工程。'}</p>
               <div className="profile-details"><span><MapPin size={15} />中国 · 远程工作</span><span><Coffee size={15} />咖啡与终端爱好者</span></div>
-              <a className="button button-dark" href={`mailto:${profile?.email || 'hello@gopress.dev'}`}><Mail size={16} /> 和我聊聊</a>
+              <a className="button button-dark" href="mailto:hello@gopress.dev"><Mail size={16} /> 和我聊聊</a>
             </>
           )}
         </div>

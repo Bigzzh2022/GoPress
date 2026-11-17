@@ -23,6 +23,10 @@ export function VditorEditor({ value = '', onChange }: VditorEditorProps) {
       mode: 'ir',
       placeholder: '从一个想法开始，用 Markdown 记录你的思考…',
       cache: { enable: false },
+      // Serve Vditor's runtime assets from our own origin instead of the default
+      // unpkg CDN; third-party scripts would otherwise run inside the admin
+      // session, where they could call the publishing API.
+      cdn: `${import.meta.env.BASE_URL}vditor`,
       counter: { enable: true, type: 'text' },
       toolbarConfig: { pin: true },
       toolbar: [

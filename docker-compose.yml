@@ -3,10 +3,10 @@ services:
     image: mysql:8.0
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-gopress}
       MYSQL_USER: ${MYSQL_USER:-gopress}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-gopress}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
       TZ: Asia/Shanghai
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
@@ -35,23 +35,34 @@ services:
       context: .
       dockerfile: deploy/backend.Dockerfile
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     environment:
       PORT: 8080
-      MYSQL_DSN: ${MYSQL_USER:-gopress}:${MYSQL_PASSWORD:-gopress}@tcp(mysql:3306)/${MYSQL_DATABASE:-gopress}?charset=utf8mb4&parseTime=True&loc=Local
+      MYSQL_DSN: ${MYSQL_USER:-gopress}:${MYSQL_PASSWORD}@tcp(mysql:3306)/${MYSQL_DATABASE:-gopress}?charset=utf8mb4&parseTime=True&loc=Local
       REDIS_ADDR: redis:6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       REDIS_DB: ${REDIS_DB:-0}
-      JWT_SECRET: ${JWT_SECRET:-local-only-change-this-jwt-secret-32-chars}
+      # Never falls back to a known value: the API refuses to start without a
+      # unique 32+ character secret.
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (openssl rand -hex 32)}
       ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
       REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-168h}
-      CORS_ORIGINS: http://localhost:3000
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      # Only trust forwarding headers from the Docker bridge network, otherwise
+      # every visitor would share the proxy address and one rate-limit bucket.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       ADMIN_NAME: ${ADMIN_NAME:-GoPress Admin}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@gopress.dev}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-GoPress123!}
+      # No default: the seed command refuses to create an administrator with a
+      # published password.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
       SEED_DEMO: ${SEED_DEMO:-true}
+    # Published on loopback only so the reverse proxy stays the single entry
+    # point; direct access would bypass its body limit and security headers.
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       mysql:
         condition: service_healthy
@@ -69,6 +80,8 @@ services:
       context: .
       dockerfile: deploy/frontend.Dockerfile
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "3000:80"
     depends_on:

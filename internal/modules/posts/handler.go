@@ -23,7 +23,7 @@ type Handler struct {
 }
 
 type listQuery struct {
-	Page     int    `form:"page" binding:"omitempty,min=1"`
+	Page     int    `form:"page" binding:"omitempty,min=1,max=200"`
 	PageSize int    `form:"page_size" binding:"omitempty,min=1,max=100"`
 	Keyword  string `form:"keyword" binding:"omitempty,max=200"`
 	Category string `form:"category" binding:"omitempty,max=191"`
@@ -36,7 +36,7 @@ type statusInput struct {
 }
 
 type previewInput struct {
-	Content string `json:"content"`
+	Content string `json:"content" binding:"max=262144"`
 }
 
 func NewHandler(service *Service, publicCache *cache.Cache, renderer *markdown.Renderer) *Handler {
