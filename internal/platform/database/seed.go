@@ -70,13 +70,19 @@ func Seed(ctx context.Context, db *gorm.DB, cfg config.Config, renderer *markdow
 	var admin model.User
 	err := db.WithContext(ctx).Where("role = ?", model.RoleAdmin).Order("id ASC").First(&admin).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		if len(cfg.AdminPassword) < 8 {
-			return fmt.Errorf("ADMIN_PASSWORD must contain at least 8 characters")
+		if strings.TrimSpace(cfg.AdminPassword) == "" {
+			return fmt.Errorf("ADMIN_PASSWORD is required to create the first administrator")
+		}
+		if err := config.ValidateAdminPassword(cfg.AdminPassword); err != nil {
+			return err
+		}
+		if err := config.ValidateAdminEmail(cfg.AdminEmail); err != nil {
+			return err
+		}
+		if strings.TrimSpace(cfg.AdminName) == "" {
+			return fmt.Errorf("ADMIN_NAME cannot be empty")
 		}
 		email := strings.ToLower(strings.TrimSpace(cfg.AdminEmail))
-		if email == "" || strings.TrimSpace(cfg.AdminName) == "" {
-			return fmt.Errorf("ADMIN_NAME and ADMIN_EMAIL cannot be empty")
-		}
 		hash, err := bcrypt.GenerateFromPassword([]byte(cfg.AdminPassword), bcrypt.DefaultCost)
 		if err != nil {
 			return fmt.Errorf("hash admin password: %w", err)

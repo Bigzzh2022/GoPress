@@ -9,7 +9,9 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +20,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	"gopress/internal/http/middleware"
 	"gopress/internal/http/response"
 	"gopress/internal/model"
 )
@@ -29,12 +32,24 @@ const (
 	cookiePath  = "/api/v1/auth"
 )
 
+// dummyPasswordHash is compared against when the account does not exist so a
+// failed login costs the same time regardless of whether the email is valid.
+var dummyPasswordHash = func() []byte {
+	hash, err := bcrypt.GenerateFromPassword([]byte("gopress-timing-equalizer"), bcrypt.DefaultCost)
+	if err != nil {
+		return []byte("$2a$10$C6UzMDM.H6dfI/f/IKcEeO7ZBv0uJfWlY3kwKz3uJhGqk5W9nJ8Ky")
+	}
+	return hash
+}()
+
 type Handler struct {
-	db         *gorm.DB
-	tokens     *TokenManager
-	redis      *redis.Client
-	refreshTTL time.Duration
-	secure     bool
+	db             *gorm.DB
+	tokens         *TokenManager
+	redis          *redis.Client
+	refreshTTL     time.Duration
+	secure         bool
+	loginLimiter   *middleware.RateLimiter
+	refreshLimiter *middleware.RateLimiter
 }
 
 type session struct {
@@ -42,8 +57,8 @@ type session struct {
 }
 
 type loginInput struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	Email    string `json:"email" binding:"required,email,max=191"`
+	Password string `json:"password" binding:"required,max=128"`
 }
 
 type authOutput struct {
@@ -51,8 +66,19 @@ type authOutput struct {
 	User        model.UserDTO `json:"user"`
 }
 
-func NewHandler(db *gorm.DB, tokens *TokenManager, redisClient *redis.Client, refreshTTL time.Duration, secure bool) *Handler {
-	return &Handler{db: db, tokens: tokens, redis: redisClient, refreshTTL: refreshTTL, secure: secure}
+func NewHandler(
+	db *gorm.DB,
+	tokens *TokenManager,
+	redisClient *redis.Client,
+	refreshTTL time.Duration,
+	secure bool,
+	loginLimiter *middleware.RateLimiter,
+	refreshLimiter *middleware.RateLimiter,
+) *Handler {
+	return &Handler{
+		db: db, tokens: tokens, redis: redisClient, refreshTTL: refreshTTL, secure: secure,
+		loginLimiter: loginLimiter, refreshLimiter: refreshLimiter,
+	}
 }
 
 func CurrentUserID(c *gin.Context) uint {
@@ -68,21 +94,41 @@ func (h *Handler) Authenticate() gin.HandlerFunc {
 			response.Error(c, http.StatusUnauthorized, response.CodeUnauthorized, "missing bearer token")
 			return
 		}
-		id, role, err := h.tokens.Parse(parts[1])
+		identity, err := h.tokens.Parse(parts[1])
 		if err != nil {
 			response.Error(c, http.StatusUnauthorized, response.CodeUnauthorized, "invalid or expired access token")
 			return
 		}
-		c.Set(userIDKey, id)
-		c.Set(userRoleKey, role)
+		if h.isRevoked(c.Request.Context(), identity.JTI) {
+			response.Error(c, http.StatusUnauthorized, response.CodeUnauthorized, "access token has been revoked")
+			return
+		}
+		c.Set(userIDKey, identity.UserID)
+		c.Set(userRoleKey, identity.Role)
 		c.Next()
 	}
 }
 
-func RequireAdmin() gin.HandlerFunc {
+// RequireAdmin confirms the role claim against the database so a demoted or
+// deleted account loses access immediately rather than when its token expires.
+func RequireAdmin(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, _ := c.Get(userRoleKey)
 		if role != model.RoleAdmin {
+			response.Error(c, http.StatusForbidden, response.CodeForbidden, "admin access required")
+			return
+		}
+		var current model.User
+		err := db.WithContext(c).Select("id", "role").First(&current, CurrentUserID(c)).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			response.Error(c, http.StatusUnauthorized, response.CodeUnauthorized, "account no longer exists")
+			return
+		}
+		if err != nil {
+			response.Error(c, http.StatusInternalServerError, response.CodeInternal, "could not verify permissions")
+			return
+		}
+		if current.Role != model.RoleAdmin {
 			response.Error(c, http.StatusForbidden, response.CodeForbidden, "admin access required")
 			return
 		}
@@ -96,7 +142,9 @@ func (h *Handler) Login(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "invalid login input")
 		return
 	}
-	if !h.allowLogin(c.Request.Context(), c.ClientIP()) {
+	ip := c.ClientIP()
+	if allowed, retry := h.loginLimiter.Allow(c.Request.Context(), ip); !allowed {
+		retryAfter(c, retry)
 		response.Error(c, http.StatusTooManyRequests, response.CodeRateLimited, "too many login attempts")
 		return
 	}
@@ -104,6 +152,7 @@ func (h *Handler) Login(c *gin.Context) {
 	email := strings.ToLower(strings.TrimSpace(input.Email))
 	var user model.User
 	if err := h.db.WithContext(c).Where("email = ?", email).First(&user).Error; err != nil {
+		_ = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte(input.Password))
 		h.invalidCredentials(c)
 		return
 	}
@@ -116,9 +165,7 @@ func (h *Handler) Login(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, response.CodeInternal, "could not issue access token")
 		return
 	}
-	if h.redis != nil {
-		_ = h.redis.Del(c, loginRateKey(c.ClientIP())).Err()
-	}
+	h.loginLimiter.Reset(c.Request.Context(), ip)
 
 	refreshToken, err := newOpaqueToken()
 	if err != nil {
@@ -134,6 +181,11 @@ func (h *Handler) Login(c *gin.Context) {
 }
 
 func (h *Handler) Refresh(c *gin.Context) {
+	if allowed, retry := h.refreshLimiter.Allow(c.Request.Context(), c.ClientIP()); !allowed {
+		retryAfter(c, retry)
+		response.Error(c, http.StatusTooManyRequests, response.CodeRateLimited, "too many refresh attempts")
+		return
+	}
 	token, err := c.Cookie(cookieName)
 	if err != nil || token == "" {
 		response.Error(c, http.StatusUnauthorized, response.CodeUnauthorized, "missing refresh token")
@@ -178,6 +230,13 @@ func (h *Handler) Refresh(c *gin.Context) {
 }
 
 func (h *Handler) Logout(c *gin.Context) {
+	// Revoke the presented access token so logout is not just a client-side
+	// gesture; otherwise a copied token stays valid for its whole TTL.
+	if parts := strings.Fields(c.GetHeader("Authorization")); len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+		if identity, err := h.tokens.Parse(parts[1]); err == nil {
+			h.revoke(c.Request.Context(), identity)
+		}
+	}
 	if token, err := c.Cookie(cookieName); err == nil && token != "" && h.redis != nil {
 		_ = h.redis.Del(c, refreshKey(token)).Err()
 	}
@@ -202,27 +261,38 @@ func (h *Handler) invalidCredentials(c *gin.Context) {
 	response.Error(c, http.StatusUnauthorized, response.CodeUnauthorized, "invalid email or password")
 }
 
-func (h *Handler) allowLogin(ctx context.Context, ip string) bool {
-	if h.redis == nil {
-		return true
+func (h *Handler) isRevoked(ctx context.Context, jti string) bool {
+	if h.redis == nil || jti == "" {
+		return false
 	}
-	key := loginRateKey(ip)
-	count, err := h.redis.Incr(ctx, key).Result()
+	count, err := h.redis.Exists(ctx, revokedKey(jti)).Result()
 	if err != nil {
-		return true
+		return false
 	}
-	if count == 1 {
-		if err := h.redis.Expire(ctx, key, time.Minute).Err(); err != nil {
-			_ = h.redis.Del(ctx, key).Err()
-			return true
-		}
-	}
-	return count <= 10
+	return count > 0
 }
 
-func loginRateKey(ip string) string {
-	digest := sha256.Sum256([]byte(ip))
-	return "gopress:login:" + hex.EncodeToString(digest[:])
+func (h *Handler) revoke(ctx context.Context, identity Identity) {
+	if h.redis == nil || identity.JTI == "" {
+		return
+	}
+	ttl := time.Until(identity.ExpiresAt)
+	if ttl < time.Second {
+		ttl = time.Second
+	}
+	_ = h.redis.Set(ctx, revokedKey(identity.JTI), "1", ttl).Err()
+}
+
+func revokedKey(jti string) string {
+	return "gopress:revoked:" + jti
+}
+
+func retryAfter(c *gin.Context, wait time.Duration) {
+	seconds := int(math.Ceil(wait.Seconds()))
+	if seconds < 1 {
+		seconds = 1
+	}
+	c.Header("Retry-After", strconv.Itoa(seconds))
 }
 
 func newOpaqueToken() (string, error) {

@@ -8,6 +8,7 @@ node_modules
 web/node_modules
 web/dist
 web/coverage
+web/public/vditor
 *.log
 *.test
 coverage.txt

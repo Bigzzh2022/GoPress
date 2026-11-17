@@ -153,3 +153,33 @@
 4. H-2 请求体上限与 API 端口收敛。
 5. H-3 Vditor 资源自托管 + CSP。
 6. 其余 Medium/Low 按迭代逐步处理。
+
+---
+
+## 修复记录（2026-11-17）
+
+全部 18 项发现均已处理，验证方式见每行末尾。
+
+| ID | 修复内容 | 验证 |
+|---|---|---|
+| C-1 | 移除 `ADMIN_PASSWORD` 默认值；为空或命中已知弱口令时 seed 直接报错；新增 12 位 + 三类字符的复杂度校验与邮箱格式校验；Compose 与 `.env.example` 改为必填占位符；README 删除默认账号 | `config_test.go`；运行服务分别输出“ADMIN_PASSWORD must contain at least 12 characters” |
+| C-2 | 移除 `JWT_SECRET` 兜底；要求 ≥ 32 字符且不等于任何已发布值，否则启动失败 | `config_test.go`；实际启动分别输出 “JWT_SECRET is required” 与 “matches a published default value” |
+| H-1 | 新增 `TRUSTED_PROXIES` 并交给 `SetTrustedProxies`；新增 Redis + 进程内兜底限流器（Redis 故障不再放行）；登录 10/min、刷新 30/min、公开接口 120/min；429 返回 `Retry-After` | `middleware_test.go`（无 Redis 时第 3 次请求 429 且带 Retry-After） |
+| H-2 | 新增 2 MiB `BodyLimit` 中间件 + `MaxBytesReader`；预览正文 `max=262144`；Compose 将 8080 改为 `127.0.0.1` 绑定 | `middleware_test.go`（超限 413，分块请求同样被截断） |
+| H-3 | 新增 `web/scripts/copy-vditor.mjs` 在 dev/build 前把 `vditor/dist` 复制到 `public/vditor`，并在编辑器显式配置 `cdn`；Nginx 增加 CSP 中 `script-src 'self'` | `npm run build` 后 `web/dist/vditor/dist/js` 存在；`web/src` 中无 unpkg 引用 |
+| M-1 | 新增 `PublicUserDTO`（无 email），文章与公开资料接口改用该结构；前端新增 `PublicUser` 类型，关于页改用静态联系地址 | `blog.ts` / `types/index.ts`；Go 测试通过 |
+| M-2 | `*` 时仅返回 `Access-Control-Allow-Origin: *` 且不设置 `Allow-Credentials`；白名单回显时才允许凭据 | `middleware_test.go` |
+| M-3 | `page` 上限 200；公开读接口按 IP 限流 120/min | 编译期 binding 校验 + 限流中间件 |
+| M-4 | API 新增 `SecurityHeaders`（nosniff、DENY frame、CSP `default-src 'none'`、Permissions-Policy）；Nginx 增加 CSP 与 Permissions-Policy | `middleware/security.go`、`deploy/nginx.conf` |
+| M-5 | 新增 `RequireTrustedOrigin` 中间件，refresh/logout 校验 `Origin`/`Referer` 白名单 | `middleware_test.go`（跨站 Origin 403） |
+| M-6 | 访问令牌加入 `jti`，注销时按剩余有效期写入 Redis 吊销名单；后台接口每次校验数据库中的角色与账号存在性 | `token_test.go`（jti 唯一） |
+| M-7 | Compose 对 `JWT_SECRET`、`ADMIN_PASSWORD`、数据库口令使用 `${VAR:?}` 必填；API 端口仅绑定回环；新增 `no-new-privileges` | `docker-compose.yml` 静态检查 |
+| L-1 | 用户不存在时仍执行一次 bcrypt 比较（固定 dummy hash） | 代码审查 |
+| L-2 | 管理员口令复杂度与弱口令黑名单 | `config_test.go` |
+| L-3 | 公开接口统一限流 120/min | `middleware_test.go` |
+| L-4 | 自定义访问日志只记录 path，不记录查询串 | `middleware/logger.go` |
+| L-5 | Dockerfile 基础镜像改为 `ARG`，便于运维固定 digest 并在 README 说明 | `deploy/*.Dockerfile` |
+| L-6 | Nginx `server_tokens off` | `deploy/nginx.conf` |
+
+说明：沙箱无法访问 Docker Hub，未能在本环境解析并写入镜像 digest，因此以可覆盖的 `ARG` 加部署说明落地；生产发布时请补上 `@sha256:...`。
+

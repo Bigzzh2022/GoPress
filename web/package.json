@@ -4,8 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "prepare:vditor": "node scripts/copy-vditor.mjs",
+    "dev": "npm run prepare:vditor && vite",
+    "build": "npm run prepare:vditor && tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
