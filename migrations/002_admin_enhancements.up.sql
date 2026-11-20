@@ -1,0 +1,15 @@
+ALTER TABLE posts ADD COLUMN deleted_at DATETIME(3) NULL;
+
+CREATE INDEX idx_posts_deleted_at ON posts (deleted_at);
+
+CREATE TABLE IF NOT EXISTS site_settings (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    site_name VARCHAR(100) NOT NULL,
+    site_tagline VARCHAR(200) NOT NULL DEFAULT '',
+    site_description TEXT NULL,
+    footer_text VARCHAR(255) NOT NULL DEFAULT '',
+    contact_email VARCHAR(191) NOT NULL DEFAULT '',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

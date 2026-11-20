@@ -53,7 +53,8 @@ func (s *Service) ListCategories(ctx context.Context, publicOnly bool) ([]model.
 	}
 	counts := make(map[uint]int64)
 	query := s.db.WithContext(ctx).Table("posts").
-		Select("category_id AS id, COUNT(*) AS count").Where("category_id IS NOT NULL")
+		Select("category_id AS id, COUNT(*) AS count").
+		Where("category_id IS NOT NULL AND deleted_at IS NULL")
 	if publicOnly {
 		query = publicPosts(query)
 	}
@@ -81,7 +82,8 @@ func (s *Service) ListTags(ctx context.Context, publicOnly bool) ([]model.TagDTO
 	counts := make(map[uint]int64)
 	query := s.db.WithContext(ctx).Table("post_tags").
 		Select("post_tags.tag_id AS id, COUNT(DISTINCT posts.id) AS count").
-		Joins("JOIN posts ON posts.id = post_tags.post_id")
+		Joins("JOIN posts ON posts.id = post_tags.post_id").
+		Where("posts.deleted_at IS NULL")
 	if publicOnly {
 		query = publicPosts(query)
 	}
@@ -103,7 +105,7 @@ func (s *Service) ListTags(ctx context.Context, publicOnly bool) ([]model.TagDTO
 
 func publicPosts(query *gorm.DB) *gorm.DB {
 	return query.Where(
-		"posts.status = ? AND posts.published_at IS NOT NULL AND posts.published_at <= ?",
+		"posts.status = ? AND posts.published_at IS NOT NULL AND posts.published_at <= ? AND posts.deleted_at IS NULL",
 		model.StatusPublished, time.Now(),
 	)
 }

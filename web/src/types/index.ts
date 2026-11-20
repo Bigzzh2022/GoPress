@@ -1,4 +1,6 @@
 export type PostStatus = 'draft' | 'published';
+export type AdminPostStatus = PostStatus | 'trash';
+export type BatchAction = 'publish' | 'draft' | 'delete' | 'restore' | 'purge';
 
 export interface Category {
   id: number;
@@ -46,6 +48,7 @@ export interface PostSummary {
   tags: Tag[];
   author: PublicUser;
   published_at: string | null;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -95,6 +98,7 @@ export interface DashboardData {
   post_count: number;
   published_count: number;
   draft_count: number;
+  trash_count: number;
   category_count: number;
   tag_count: number;
   recent_posts: PostSummary[];
@@ -107,4 +111,21 @@ export interface PostQuery {
   category?: string;
   tag?: string;
   status?: PostStatus | '';
+}
+
+export interface AdminPostQuery extends Omit<PostQuery, 'status'> {
+  status?: AdminPostStatus | '';
+}
+
+export interface SiteSettings {
+  site_name: string;
+  site_tagline: string;
+  site_description: string;
+  footer_text: string;
+  contact_email: string;
+}
+
+export interface PasswordPayload {
+  current_password: string;
+  new_password: string;
 }

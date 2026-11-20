@@ -18,6 +18,7 @@ type Output struct {
 	PostCount      int64               `json:"post_count"`
 	PublishedCount int64               `json:"published_count"`
 	DraftCount     int64               `json:"draft_count"`
+	TrashCount     int64               `json:"trash_count"`
 	CategoryCount  int64               `json:"category_count"`
 	TagCount       int64               `json:"tag_count"`
 	RecentPosts    []model.PostSummary `json:"recent_posts"`
@@ -36,6 +37,8 @@ func (h *Handler) Get(c *gin.Context) {
 		{&output.PostCount, h.db.WithContext(c).Model(&model.Post{})},
 		{&output.PublishedCount, h.db.WithContext(c).Model(&model.Post{}).Where("status = ?", model.StatusPublished)},
 		{&output.DraftCount, h.db.WithContext(c).Model(&model.Post{}).Where("status = ?", model.StatusDraft)},
+		{&output.TrashCount, h.db.WithContext(c).Unscoped().Model(&model.Post{}).
+			Where("deleted_at IS NOT NULL")},
 		{&output.CategoryCount, h.db.WithContext(c).Model(&model.Category{})},
 		{&output.TagCount, h.db.WithContext(c).Model(&model.Tag{})},
 	}

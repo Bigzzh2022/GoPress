@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 const (
 	RoleAdmin       = "admin"
@@ -38,22 +42,37 @@ type Tag struct {
 }
 
 type Post struct {
-	ID          uint       `gorm:"primaryKey" json:"-"`
-	Title       string     `gorm:"size:255;not null" json:"-"`
-	Slug        string     `gorm:"size:191;not null;uniqueIndex" json:"-"`
-	Excerpt     string     `gorm:"type:text" json:"-"`
-	ContentMD   string     `gorm:"type:longtext;not null" json:"-"`
-	ContentHTML string     `gorm:"type:longtext;not null" json:"-"`
-	CoverImage  string     `gorm:"size:500" json:"-"`
-	Status      string     `gorm:"size:20;not null;default:draft;index:idx_posts_status_published,priority:1" json:"-"`
-	PublishedAt *time.Time `gorm:"index:idx_posts_status_published,priority:2" json:"-"`
-	AuthorID    uint       `gorm:"not null;index" json:"-"`
-	Author      User       `gorm:"foreignKey:AuthorID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"-"`
-	CategoryID  *uint      `gorm:"index" json:"-"`
-	Category    *Category  `gorm:"foreignKey:CategoryID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"-"`
-	Tags        []Tag      `gorm:"many2many:post_tags;joinForeignKey:PostID;joinReferences:TagID" json:"-"`
-	CreatedAt   time.Time  `gorm:"index" json:"-"`
-	UpdatedAt   time.Time  `json:"-"`
+	ID          uint           `gorm:"primaryKey" json:"-"`
+	Title       string         `gorm:"size:255;not null" json:"-"`
+	Slug        string         `gorm:"size:191;not null;uniqueIndex" json:"-"`
+	Excerpt     string         `gorm:"type:text" json:"-"`
+	ContentMD   string         `gorm:"type:longtext;not null" json:"-"`
+	ContentHTML string         `gorm:"type:longtext;not null" json:"-"`
+	CoverImage  string         `gorm:"size:500" json:"-"`
+	Status      string         `gorm:"size:20;not null;default:draft;index:idx_posts_status_published,priority:1" json:"-"`
+	PublishedAt *time.Time     `gorm:"index:idx_posts_status_published,priority:2" json:"-"`
+	AuthorID    uint           `gorm:"not null;index" json:"-"`
+	Author      User           `gorm:"foreignKey:AuthorID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"-"`
+	CategoryID  *uint          `gorm:"index" json:"-"`
+	Category    *Category      `gorm:"foreignKey:CategoryID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"-"`
+	Tags        []Tag          `gorm:"many2many:post_tags;joinForeignKey:PostID;joinReferences:TagID" json:"-"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
+	CreatedAt   time.Time      `gorm:"index" json:"-"`
+	UpdatedAt   time.Time      `json:"-"`
+}
+
+// SiteSetting stores the small set of public site preferences a blog author
+// can change without a redeploy. A single row is expected; readers only ever
+// receive the DTO below.
+type SiteSetting struct {
+	ID              uint      `gorm:"primaryKey" json:"-"`
+	SiteName        string    `gorm:"size:100;not null" json:"-"`
+	SiteTagline     string    `gorm:"size:200;not null" json:"-"`
+	SiteDescription string    `gorm:"type:text" json:"-"`
+	FooterText      string    `gorm:"size:255" json:"-"`
+	ContactEmail    string    `gorm:"size:191" json:"-"`
+	CreatedAt       time.Time `json:"-"`
+	UpdatedAt       time.Time `json:"-"`
 }
 
 type PostTag struct {

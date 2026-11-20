@@ -7,6 +7,7 @@ import type {
   PostQuery,
   PostSummary,
   PublicUser,
+  SiteSettings,
   Tag,
 } from '../types';
 
@@ -23,4 +24,5 @@ export const blogApi = {
   categories: () => unwrap(api.get<ApiResponse<Category[]>>('/categories')),
   tags: () => unwrap(api.get<ApiResponse<Tag[]>>('/tags')),
   profile: () => unwrap(api.get<ApiResponse<PublicUser>>('/profile')),
+  settings: () => unwrap(api.get<ApiResponse<SiteSettings>>('/settings')),
 };

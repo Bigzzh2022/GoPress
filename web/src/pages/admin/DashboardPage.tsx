@@ -31,7 +31,7 @@ export default function DashboardPage() {
         <Card className="recent-card" title={<div className="admin-card-title"><span>最近文章</span><small>最近更新的内容</small></div>} extra={<Link to="/admin/posts">全部文章 <ArrowRightOutlined /></Link>}>
           <Table<PostSummary> rowKey="id" dataSource={data?.recent_posts} loading={dashboardQuery.isLoading} pagination={false} scroll={{ x: 600 }} columns={[
             { title: '文章', dataIndex: 'title', render: (title: string, record) => <Link className="table-post-title" to={`/admin/posts/${record.id}/edit`}>{title}<small>{record.category?.name || '未分类'}</small></Link> },
-            { title: '状态', dataIndex: 'status', width: 95, render: (status: PostSummary['status']) => <Tag color={status === 'published' ? 'green' : 'gold'}>{status === 'published' ? '已发布' : '草稿'}</Tag> },
+            { title: '状态', dataIndex: 'status', width: 95, render: (status: PostSummary['status'], record) => { const scheduled = status === 'published' && record.published_at && dayjs(record.published_at).isAfter(dayjs()); return <Tag color={scheduled ? 'blue' : status === 'published' ? 'green' : 'gold'}>{scheduled ? '定时' : status === 'published' ? '已发布' : '草稿'}</Tag>; } },
             { title: '更新时间', dataIndex: 'updated_at', width: 120, render: (date: string) => dayjs(date).format('MM-DD HH:mm') },
             { title: '', key: 'action', width: 45, render: (_, record) => <Button type="text" icon={<ArrowRightOutlined />} onClick={() => navigate(`/admin/posts/${record.id}/edit`)} aria-label={`编辑 ${record.title}`} /> },
           ]} />

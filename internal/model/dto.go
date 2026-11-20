@@ -37,6 +37,14 @@ type TagDTO struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type SiteSettingsDTO struct {
+	SiteName        string `json:"site_name"`
+	SiteTagline     string `json:"site_tagline"`
+	SiteDescription string `json:"site_description"`
+	FooterText      string `json:"footer_text"`
+	ContactEmail    string `json:"contact_email"`
+}
+
 type PostSummary struct {
 	ID          uint          `json:"id"`
 	Title       string        `json:"title"`
@@ -49,6 +57,7 @@ type PostSummary struct {
 	Tags        []TagDTO      `json:"tags"`
 	Author      PublicUserDTO `json:"author"`
 	PublishedAt *time.Time    `json:"published_at"`
+	DeletedAt   *time.Time    `json:"deleted_at"`
 	CreatedAt   time.Time     `json:"created_at"`
 	UpdatedAt   time.Time     `json:"updated_at"`
 }
@@ -85,6 +94,14 @@ func ToTagDTO(tag Tag) TagDTO {
 	}
 }
 
+func ToSiteSettingsDTO(setting SiteSetting) SiteSettingsDTO {
+	return SiteSettingsDTO{
+		SiteName: setting.SiteName, SiteTagline: setting.SiteTagline,
+		SiteDescription: setting.SiteDescription, FooterText: setting.FooterText,
+		ContactEmail: setting.ContactEmail,
+	}
+}
+
 func ToPostSummary(post Post) PostSummary {
 	tags := make([]TagDTO, 0, len(post.Tags))
 	for _, tag := range post.Tags {
@@ -95,11 +112,16 @@ func ToPostSummary(post Post) PostSummary {
 		dto := ToCategoryDTO(*post.Category)
 		category = &dto
 	}
+	var deletedAt *time.Time
+	if post.DeletedAt.Valid {
+		deletedAt = &post.DeletedAt.Time
+	}
 	return PostSummary{
 		ID: post.ID, Title: post.Title, Slug: post.Slug, Excerpt: post.Excerpt,
 		CoverImage: post.CoverImage, Status: post.Status, CategoryID: post.CategoryID,
 		Category: category, Tags: tags, Author: ToPublicUserDTO(post.Author),
-		PublishedAt: post.PublishedAt, CreatedAt: post.CreatedAt, UpdatedAt: post.UpdatedAt,
+		PublishedAt: post.PublishedAt, DeletedAt: deletedAt,
+		CreatedAt: post.CreatedAt, UpdatedAt: post.UpdatedAt,
 	}
 }
 

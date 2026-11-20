@@ -28,7 +28,7 @@ type listQuery struct {
 	Keyword  string `form:"keyword" binding:"omitempty,max=200"`
 	Category string `form:"category" binding:"omitempty,max=191"`
 	Tag      string `form:"tag" binding:"omitempty,max=191"`
-	Status   string `form:"status" binding:"omitempty,oneof=draft published"`
+	Status   string `form:"status" binding:"omitempty,oneof=draft published trash"`
 }
 
 type statusInput struct {
@@ -190,6 +190,45 @@ func (h *Handler) Delete(c *gin.Context) {
 	response.OK(c, gin.H{"deleted": true})
 }
 
+func (h *Handler) Restore(c *gin.Context) {
+	id, ok := pathID(c)
+	if !ok {
+		return
+	}
+	post, err := h.service.Restore(c, id)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	response.OK(c, model.ToPostDetail(post))
+}
+
+func (h *Handler) Purge(c *gin.Context) {
+	id, ok := pathID(c)
+	if !ok {
+		return
+	}
+	if err := h.service.Purge(c, id); err != nil {
+		handleError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"deleted": true})
+}
+
+func (h *Handler) Batch(c *gin.Context) {
+	var input BatchInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "invalid batch input")
+		return
+	}
+	affected, err := h.service.Batch(c, input)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"affected": affected})
+}
+
 func (h *Handler) Preview(c *gin.Context) {
 	var input previewInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -261,6 +300,8 @@ func handleError(c *gin.Context, err error) {
 		response.Error(c, http.StatusConflict, response.CodeConflict, "post slug already exists")
 	case errors.Is(err, ErrInvalidCategory), errors.Is(err, ErrInvalidTags):
 		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, err.Error())
+	case errors.Is(err, ErrNotTrashed):
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "article must be in the recycle bin before permanent deletion")
 	case errors.Is(err, ErrInvalid):
 		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "invalid post input")
 	default:

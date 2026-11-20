@@ -21,9 +21,14 @@ var (
 	ErrNotFound        = errors.New("post not found")
 	ErrConflict        = errors.New("post slug already exists")
 	ErrInvalid         = errors.New("invalid post input")
+	ErrNotTrashed      = errors.New("post is not in trash")
 	ErrInvalidCategory = errors.New("category does not exist")
 	ErrInvalidTags     = errors.New("one or more tags do not exist")
 )
+
+// StatusTrash is a virtual list filter: it selects soft-deleted posts instead
+// of a stored status value.
+const StatusTrash = "trash"
 
 type Service struct {
 	db       *gorm.DB
@@ -94,8 +99,13 @@ func (s *Service) List(ctx context.Context, params ListParams, publicOnly bool) 
 	query := s.db.WithContext(ctx).Model(&model.Post{})
 	if publicOnly {
 		query = published(query, time.Now())
-	} else if params.Status != "" {
-		query = query.Where("posts.status = ?", params.Status)
+	} else {
+		switch params.Status {
+		case StatusTrash:
+			query = query.Unscoped().Where("posts.deleted_at IS NOT NULL")
+		case model.StatusDraft, model.StatusPublished:
+			query = query.Where("posts.status = ?", params.Status)
+		}
 	}
 	query = applyFilters(query, params)
 
@@ -104,14 +114,17 @@ func (s *Service) List(ctx context.Context, params ListParams, publicOnly bool) 
 		return nil, 0, err
 	}
 	items := make([]model.Post, 0, params.PageSize)
-	err := query.Select("posts.*").Scopes(withPreloads).
-		Order("posts.created_at DESC").Order("posts.id DESC")
-	if publicOnly {
-		err = query.Select("posts.*").Scopes(withPreloads).
-			Order("posts.published_at DESC").Order("posts.id DESC")
+	result := query.Select("posts.*").Scopes(withPreloads)
+	switch {
+	case publicOnly:
+		result = result.Order("posts.published_at DESC").Order("posts.id DESC")
+	case params.Status == StatusTrash:
+		result = result.Order("posts.deleted_at DESC").Order("posts.id DESC")
+	default:
+		result = result.Order("posts.updated_at DESC").Order("posts.id DESC")
 	}
 	offset := (params.Page - 1) * params.PageSize
-	if err := err.Offset(offset).Limit(params.PageSize).Find(&items).Error; err != nil {
+	if err := result.Offset(offset).Limit(params.PageSize).Find(&items).Error; err != nil {
 		return nil, 0, err
 	}
 	return items, total, nil
@@ -374,20 +387,120 @@ func (s *Service) SetStatus(ctx context.Context, id uint, status string) (model.
 }
 
 func (s *Service) Delete(ctx context.Context, id uint) error {
-	var post model.Post
-	if err := s.db.WithContext(ctx).First(&post, id).Error; err != nil {
-		return normalizeNotFound(err)
+	result := s.db.WithContext(ctx).Delete(&model.Post{}, id)
+	if result.Error != nil {
+		return result.Error
 	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	s.invalidate(ctx)
+	return nil
+}
+
+func (s *Service) Restore(ctx context.Context, id uint) (model.Post, error) {
+	result := s.db.WithContext(ctx).Unscoped().Model(&model.Post{}).
+		Where("id = ? AND deleted_at IS NOT NULL", id).Update("deleted_at", nil)
+	if result.Error != nil {
+		return model.Post{}, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return model.Post{}, ErrNotFound
+	}
+	s.invalidate(ctx)
+	return s.load(ctx, id)
+}
+
+// Purge permanently removes a post that is already in the recycle bin. The
+// deleted_at guard prevents an accidental hard delete of live content.
+func (s *Service) Purge(ctx context.Context, id uint) error {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var post model.Post
+		if err := tx.Unscoped().First(&post, id).Error; err != nil {
+			return normalizeNotFound(err)
+		}
+		if !post.DeletedAt.Valid {
+			return ErrNotTrashed
+		}
 		if err := tx.Where("post_id = ?", id).Delete(&model.PostTag{}).Error; err != nil {
 			return err
 		}
-		return tx.Where("id = ?", id).Delete(&model.Post{}).Error
+		return tx.Unscoped().Where("id = ?", id).Delete(&model.Post{}).Error
 	})
 	if err == nil {
 		s.invalidate(ctx)
 	}
 	return err
+}
+
+type BatchInput struct {
+	Action string `json:"action" binding:"required,oneof=publish draft delete restore purge"`
+	IDs    []uint `json:"ids" binding:"required,min=1,max=100,dive,gt=0"`
+}
+
+// Batch applies one action to up to 100 selected posts. Publish only fills in
+// published_at when it is missing, so editing a scheduled post through the
+// batch bar does not silently publish it early.
+func (s *Service) Batch(ctx context.Context, input BatchInput) (int64, error) {
+	ids := uniqueIDs(input.IDs)
+	if len(ids) == 0 {
+		return 0, ErrInvalid
+	}
+	var affected int64
+	switch input.Action {
+	case "publish":
+		result := s.db.WithContext(ctx).Model(&model.Post{}).Where("id IN ?", ids).Updates(map[string]any{
+			"status":       model.StatusPublished,
+			"published_at": gorm.Expr("COALESCE(published_at, ?)", time.Now()),
+		})
+		if result.Error != nil {
+			return 0, result.Error
+		}
+		affected = result.RowsAffected
+	case "draft":
+		result := s.db.WithContext(ctx).Model(&model.Post{}).Where("id IN ?", ids).
+			Update("status", model.StatusDraft)
+		if result.Error != nil {
+			return 0, result.Error
+		}
+		affected = result.RowsAffected
+	case "delete":
+		result := s.db.WithContext(ctx).Where("id IN ?", ids).Delete(&model.Post{})
+		if result.Error != nil {
+			return 0, result.Error
+		}
+		affected = result.RowsAffected
+	case "restore":
+		result := s.db.WithContext(ctx).Unscoped().Model(&model.Post{}).
+			Where("id IN ? AND deleted_at IS NOT NULL", ids).Update("deleted_at", nil)
+		if result.Error != nil {
+			return 0, result.Error
+		}
+		affected = result.RowsAffected
+	case "purge":
+		err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			if err := tx.Where("post_id IN (?)", tx.Unscoped().Model(&model.Post{}).
+				Select("id").Where("id IN ? AND deleted_at IS NOT NULL", ids)).
+				Delete(&model.PostTag{}).Error; err != nil {
+				return err
+			}
+			result := tx.Unscoped().Where("id IN ? AND deleted_at IS NOT NULL", ids).Delete(&model.Post{})
+			if result.Error != nil {
+				return result.Error
+			}
+			affected = result.RowsAffected
+			return nil
+		})
+		if err != nil {
+			return 0, err
+		}
+	default:
+		return 0, ErrInvalid
+	}
+	if affected > 0 {
+		s.invalidate(ctx)
+	}
+	return affected, nil
 }
 
 func (s *Service) makeSlug(ctx context.Context, title, value string, excludeID uint) (string, error) {

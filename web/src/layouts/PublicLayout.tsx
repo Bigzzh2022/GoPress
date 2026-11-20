@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowUpRight, Menu, Search, X } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { blogApi } from '../api/blog';
 
 const navItems = [
   { to: '/', label: '首页', end: true },
@@ -11,6 +13,17 @@ const navItems = [
 export function PublicLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
+  const settingsQuery = useQuery({
+    queryKey: ['public', 'settings'],
+    queryFn: blogApi.settings,
+    staleTime: 5 * 60 * 1000,
+  });
+  const settings = settingsQuery.data;
+  const siteName = settings?.site_name || 'GoPress';
+  const siteTagline = settings?.site_tagline || 'CODE & CURIOSITY';
+  const siteDescription = settings?.site_description || '写清晰的代码，保持诚实的好奇。\n关于 Go、云原生与软件工程的独立记录。';
+  const footerText = settings?.footer_text || 'BUILT WITH GO · DESIGNED FOR READING';
+  const contactEmail = settings?.contact_email || 'hello@gopress.dev';
 
   useEffect(() => {
     setMenuOpen(false);
@@ -22,9 +35,9 @@ export function PublicLayout() {
       <a className="skip-link" href="#main-content">跳到正文</a>
       <header className="site-header">
         <div className="site-header-inner">
-          <Link to="/" className="brand" aria-label="GoPress 首页">
-            <span className="brand-mark">G<span /></span>
-            <span className="brand-word">GoPress<small>CODE & CURIOSITY</small></span>
+          <Link to="/" className="brand" aria-label={`${siteName} 首页`}>
+            <span className="brand-mark">{siteName.slice(0, 1).toUpperCase()}<span /></span>
+            <span className="brand-word">{siteName}<small>{siteTagline}</small></span>
           </Link>
           <nav className="desktop-nav" aria-label="主导航">
             {navItems.map((item) => (
@@ -55,15 +68,15 @@ export function PublicLayout() {
       <footer className="site-footer">
         <div className="footer-main page-container">
           <div>
-            <Link to="/" className="brand footer-brand"><span className="brand-mark">G<span /></span><span className="brand-word">GoPress</span></Link>
-            <p>写清晰的代码，保持诚实的好奇。<br />关于 Go、云原生与软件工程的独立记录。</p>
+            <Link to="/" className="brand footer-brand"><span className="brand-mark">{siteName.slice(0, 1).toUpperCase()}<span /></span><span className="brand-word">{siteName}</span></Link>
+            <p>{siteDescription}</p>
           </div>
           <div className="footer-links">
             <div><strong>阅读</strong><Link to="/posts">全部文章</Link><Link to="/posts?category=backend">后端工程</Link><Link to="/about">关于作者</Link></div>
-            <div><strong>连接</strong><a href="mailto:hello@gopress.dev">邮件联系</a><Link to="/admin/login">内容管理</Link><a href="#main-content">回到顶部</a></div>
+            <div><strong>连接</strong><a href={`mailto:${contactEmail}`}>邮件联系</a><Link to="/admin/login">内容管理</Link><a href="#main-content">回到顶部</a></div>
           </div>
         </div>
-        <div className="footer-bottom page-container"><span>© {new Date().getFullYear()} GoPress</span><span>BUILT WITH GO · DESIGNED FOR READING</span></div>
+        <div className="footer-bottom page-container"><span>© {new Date().getFullYear()} {siteName}</span><span>{footerText}</span></div>
       </footer>
     </div>
   );

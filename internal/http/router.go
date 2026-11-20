@@ -14,6 +14,7 @@ import (
 	"gopress/internal/modules/dashboard"
 	"gopress/internal/modules/posts"
 	"gopress/internal/modules/profile"
+	"gopress/internal/modules/settings"
 	"gopress/internal/modules/taxonomy"
 	"gopress/internal/platform/cache"
 	"gopress/internal/platform/markdown"
@@ -58,6 +59,7 @@ func NewRouter(cfg config.Config, db *gorm.DB, publicCache *cache.Cache) *gin.En
 	taxonomyService := taxonomy.NewService(db, publicCache)
 	taxonomyHandler := taxonomy.NewHandler(taxonomyService, publicCache)
 	profileHandler := profile.NewHandler(db, publicCache)
+	settingsHandler := settings.NewHandler(db, publicCache)
 	dashboardHandler := dashboard.NewHandler(db)
 
 	api := router.Group("/api/v1")
@@ -75,6 +77,7 @@ func NewRouter(cfg config.Config, db *gorm.DB, publicCache *cache.Cache) *gin.En
 	public.GET("/categories", taxonomyHandler.PublicCategories)
 	public.GET("/tags", taxonomyHandler.PublicTags)
 	public.GET("/profile", profileHandler.Public)
+	public.GET("/settings", settingsHandler.Public)
 
 	api.POST("/auth/login", authHandler.Login)
 	trustedOrigin := middleware.RequireTrustedOrigin(cfg.CORSOrigins)
@@ -89,6 +92,9 @@ func NewRouter(cfg config.Config, db *gorm.DB, publicCache *cache.Cache) *gin.En
 	admin.GET("/posts/:id", postHandler.AdminDetail)
 	admin.PUT("/posts/:id", postHandler.Update)
 	admin.DELETE("/posts/:id", postHandler.Delete)
+	admin.POST("/posts/:id/restore", postHandler.Restore)
+	admin.DELETE("/posts/:id/purge", postHandler.Purge)
+	admin.POST("/posts/batch", postHandler.Batch)
 	admin.PATCH("/posts/:id/status", postHandler.SetStatus)
 	admin.POST("/markdown/preview", postHandler.Preview)
 	admin.GET("/categories", taxonomyHandler.AdminCategories)
@@ -101,6 +107,9 @@ func NewRouter(cfg config.Config, db *gorm.DB, publicCache *cache.Cache) *gin.En
 	admin.DELETE("/tags/:id", taxonomyHandler.DeleteTag)
 	admin.GET("/profile", profileHandler.Admin)
 	admin.PUT("/profile", profileHandler.Update)
+	admin.PUT("/profile/password", profileHandler.ChangePassword)
+	admin.GET("/settings", settingsHandler.Admin)
+	admin.PUT("/settings", settingsHandler.Update)
 
 	router.NoRoute(func(c *gin.Context) {
 		response.Error(c, http.StatusNotFound, response.CodeNotFound, "route not found")

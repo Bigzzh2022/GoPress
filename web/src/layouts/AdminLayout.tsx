@@ -3,7 +3,7 @@ import { Avatar, Dropdown, Drawer, Layout, Menu, Button } from 'antd';
 import {
   DashboardOutlined, FileTextOutlined, FolderOutlined, TagsOutlined,
   UserOutlined, MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined,
-  GlobalOutlined, MenuOutlined,
+  GlobalOutlined, MenuOutlined, SettingOutlined,
 } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
@@ -19,6 +19,7 @@ const menuItems = [
   { key: '/admin/posts', icon: <FileTextOutlined />, label: '文章管理' },
   { key: '/admin/categories', icon: <FolderOutlined />, label: '分类管理' },
   { key: '/admin/tags', icon: <TagsOutlined />, label: '标签管理' },
+  { key: '/admin/settings', icon: <SettingOutlined />, label: '站点设置' },
   { key: '/admin/profile', icon: <UserOutlined />, label: '个人资料' },
 ];
 

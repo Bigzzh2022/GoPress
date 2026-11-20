@@ -20,6 +20,9 @@ export default function PostEditorPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm<PostFormValues>();
+  const watchedStatus = Form.useWatch('status', form);
+  const watchedPublishedAt = Form.useWatch('published_at', form);
+  const scheduledAt = watchedStatus === 'published' && watchedPublishedAt && watchedPublishedAt.isAfter(dayjs()) ? watchedPublishedAt : null;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   useDocumentTitle(isEdit ? '编辑文章' : '写新文章');
@@ -86,7 +89,7 @@ export default function PostEditorPage() {
         <aside className="editor-settings">
           <Card title="发布设置">
             <Form.Item name="status" label="文章状态" rules={[{ required: true }]}><Select<PostStatus> options={[{ value: 'draft', label: '草稿 — 仅后台可见' }, { value: 'published', label: '发布 — 公开可见' }]} /></Form.Item>
-            <Form.Item name="published_at" label="发布时间"><DatePicker showTime className="w-full" placeholder="选择发布时间" /></Form.Item>
+            <Form.Item name="published_at" label="发布时间" extra={scheduledAt ? <span className="publish-hint">将在 {scheduledAt.format('YYYY-MM-DD HH:mm')} 自动发布</span> : '留空则在发布时使用当前时间'}><DatePicker showTime className="w-full" placeholder="选择发布时间" /></Form.Item>
             <div className="editor-publish-actions"><Button block onClick={() => saveWithStatus('draft')}>存为草稿</Button><Button block type="primary" onClick={() => saveWithStatus('published')}>发布文章</Button></div>
           </Card>
           <Card title="内容组织">

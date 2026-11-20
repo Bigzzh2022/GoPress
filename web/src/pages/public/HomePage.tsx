@@ -17,6 +17,13 @@ export default function HomePage() {
     queryFn: () => blogApi.posts({ page, page_size: 7 }),
   });
   const categoriesQuery = useQuery({ queryKey: ['public', 'categories'], queryFn: blogApi.categories });
+  const settingsQuery = useQuery({
+    queryKey: ['public', 'settings'],
+    queryFn: blogApi.settings,
+    staleTime: 5 * 60 * 1000,
+  });
+  const siteDescription = settingsQuery.data?.site_description
+    || '关于 Go、分布式系统与工程实践的独立博客。不追逐喧嚣，只记录值得反复阅读的技术思考。';
   const posts = postsQuery.data?.items || [];
   const featured = page === 1 ? posts[0] : undefined;
   const latest = featured ? posts.slice(1) : posts;
@@ -32,7 +39,7 @@ export default function HomePage() {
         <div className="hero-copy">
           <div className="eyebrow"><span /> INDEPENDENT TECH JOURNAL · 2026</div>
           <h1>在代码之间，<br />寻找<span>清晰的答案。</span></h1>
-          <p>关于 Go、分布式系统与工程实践的独立博客。<br className="hidden sm:block" />不追逐喧嚣，只记录值得反复阅读的技术思考。</p>
+          <p className="hero-description">{siteDescription}</p>
           <div className="hero-actions">
             <Link to="/posts" className="button button-dark">浏览全部文章 <ArrowRight size={17} /></Link>
             <Link to="/about" className="text-link">认识作者 <MoveRight size={18} /></Link>
