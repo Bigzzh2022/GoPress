@@ -21,6 +21,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("load config: %v", err)
 	}
+	if err := os.MkdirAll(cfg.UploadDir, 0o755); err != nil {
+		log.Fatalf("create upload directory %s: %v", cfg.UploadDir, err)
+	}
 	startup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	db, err := database.Open(startup, cfg.MySQLDSN)

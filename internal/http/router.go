@@ -11,7 +11,9 @@ import (
 	"gopress/internal/http/middleware"
 	"gopress/internal/http/response"
 	"gopress/internal/modules/auth"
+	"gopress/internal/modules/comments"
 	"gopress/internal/modules/dashboard"
+	"gopress/internal/modules/media"
 	"gopress/internal/modules/posts"
 	"gopress/internal/modules/profile"
 	"gopress/internal/modules/settings"
@@ -23,6 +25,7 @@ import (
 const (
 	maxRequestBodyBytes = 2 << 20 // 2 MiB, matching the reverse proxy limit
 	publicRateLimit     = 120     // requests per minute per client IP
+	commentRateLimit    = 10      // comments per minute per client IP
 	loginRateLimit      = 10      // failed attempts per minute per client IP
 	refreshRateLimit    = 30      // refresh calls per minute per client IP
 )
@@ -50,6 +53,7 @@ func NewRouter(cfg config.Config, db *gorm.DB, publicCache *cache.Cache) *gin.En
 	loginLimiter := middleware.NewRateLimiter(publicCache.Client, "login", loginRateLimit, time.Minute)
 	refreshLimiter := middleware.NewRateLimiter(publicCache.Client, "refresh", refreshRateLimit, time.Minute)
 	publicLimiter := middleware.NewRateLimiter(publicCache.Client, "public", publicRateLimit, time.Minute)
+	commentLimiter := middleware.NewRateLimiter(publicCache.Client, "comment", commentRateLimit, time.Minute)
 	authHandler := auth.NewHandler(
 		db, tokens, publicCache.Client, cfg.RefreshTokenTTL, cfg.CookieSecure,
 		loginLimiter, refreshLimiter,
@@ -61,6 +65,8 @@ func NewRouter(cfg config.Config, db *gorm.DB, publicCache *cache.Cache) *gin.En
 	profileHandler := profile.NewHandler(db, publicCache)
 	settingsHandler := settings.NewHandler(db, publicCache)
 	dashboardHandler := dashboard.NewHandler(db)
+	commentHandler := comments.NewHandler(comments.NewService(db))
+	mediaHandler := media.NewHandler(db, cfg.UploadDir, cfg.MaxUploadBytes)
 
 	api := router.Group("/api/v1")
 	api.Use(middleware.BodyLimit(maxRequestBodyBytes))
@@ -74,6 +80,8 @@ func NewRouter(cfg config.Config, db *gorm.DB, publicCache *cache.Cache) *gin.En
 	public.GET("/posts", postHandler.PublicList)
 	public.GET("/posts/:slug", postHandler.PublicDetail)
 	public.GET("/posts/:slug/related", postHandler.Related)
+	public.GET("/posts/:slug/comments", commentHandler.PublicList)
+	public.POST("/posts/:slug/comments", middleware.Limit(commentLimiter), commentHandler.Create)
 	public.GET("/categories", taxonomyHandler.PublicCategories)
 	public.GET("/tags", taxonomyHandler.PublicTags)
 	public.GET("/profile", profileHandler.Public)
@@ -110,6 +118,17 @@ func NewRouter(cfg config.Config, db *gorm.DB, publicCache *cache.Cache) *gin.En
 	admin.PUT("/profile/password", profileHandler.ChangePassword)
 	admin.GET("/settings", settingsHandler.Admin)
 	admin.PUT("/settings", settingsHandler.Update)
+	admin.GET("/comments", commentHandler.AdminList)
+	admin.DELETE("/comments/:id", commentHandler.Delete)
+	admin.GET("/media", mediaHandler.List)
+	admin.DELETE("/media/:id", mediaHandler.Delete)
+
+	// Uploads bypass the JSON body limit but keep the same authentication.
+	uploadAdmin := router.Group("/api/v1/admin",
+		authHandler.Authenticate(), auth.RequireAdmin(db), middleware.BodyLimit(cfg.MaxUploadBytes))
+	uploadAdmin.POST("/media", mediaHandler.Upload)
+
+	router.GET("/uploads/:name", mediaHandler.Serve)
 
 	router.NoRoute(func(c *gin.Context) {
 		response.Error(c, http.StatusNotFound, response.CodeNotFound, "route not found")

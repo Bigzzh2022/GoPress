@@ -15,6 +15,8 @@ const AdminPostsPage = lazy(() => import('./pages/admin/PostsPage'));
 const PostEditorPage = lazy(() => import('./pages/admin/PostEditorPage'));
 const CategoriesPage = lazy(() => import('./pages/admin/CategoriesPage'));
 const TagsPage = lazy(() => import('./pages/admin/TagsPage'));
+const CommentsPage = lazy(() => import('./pages/admin/CommentsPage'));
+const MediaPage = lazy(() => import('./pages/admin/MediaPage'));
 const SettingsPage = lazy(() => import('./pages/admin/SettingsPage'));
 const ProfilePage = lazy(() => import('./pages/admin/ProfilePage'));
 
@@ -39,6 +41,8 @@ export default function App() {
             <Route path="posts/:id/edit" element={load(<PostEditorPage />)} />
             <Route path="categories" element={load(<CategoriesPage />)} />
             <Route path="tags" element={load(<TagsPage />)} />
+            <Route path="comments" element={load(<CommentsPage />)} />
+            <Route path="media" element={load(<MediaPage />)} />
             <Route path="settings" element={load(<SettingsPage />)} />
             <Route path="profile" element={load(<ProfilePage />)} />
             <Route path="*" element={load(<NotFoundPage />)} />

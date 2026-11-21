@@ -18,6 +18,7 @@ ARG RUNTIME_IMAGE=alpine:3.21
 FROM ${RUNTIME_IMAGE}
 RUN apk add --no-cache ca-certificates tzdata wget && adduser -D -u 10001 gopress
 WORKDIR /app
+RUN mkdir -p /app/uploads && chown gopress:gopress /app/uploads
 COPY --from=build /out/server /out/seed /usr/local/bin/
 COPY migrations ./migrations
 USER gopress

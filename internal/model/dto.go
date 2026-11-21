@@ -45,6 +45,48 @@ type SiteSettingsDTO struct {
 	ContactEmail    string `json:"contact_email"`
 }
 
+type MediaDTO struct {
+	ID           uint      `json:"id"`
+	OriginalName string    `json:"original_name"`
+	URL          string    `json:"url"`
+	MimeType     string    `json:"mime_type"`
+	Size         int64     `json:"size"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type CommentDTO struct {
+	ID        uint         `json:"id"`
+	PostID    uint         `json:"post_id"`
+	ParentID  *uint        `json:"parent_id"`
+	Nickname  string       `json:"nickname"`
+	Avatar    string       `json:"avatar"`
+	Content   string       `json:"content"`
+	CreatedAt time.Time    `json:"created_at"`
+	Replies   []CommentDTO `json:"replies"`
+}
+
+type AdminCommentDTO struct {
+	ID             uint      `json:"id"`
+	PostID         uint      `json:"post_id"`
+	PostTitle      string    `json:"post_title"`
+	PostSlug       string    `json:"post_slug"`
+	ParentID       *uint     `json:"parent_id"`
+	ParentNickname string    `json:"parent_nickname"`
+	Nickname       string    `json:"nickname"`
+	Email          string    `json:"email"`
+	QQ             string    `json:"qq"`
+	Content        string    `json:"content"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func ToMediaDTO(media Media) MediaDTO {
+	return MediaDTO{
+		ID: media.ID, OriginalName: media.OriginalName,
+		URL: "/uploads/" + media.StoredName, MimeType: media.MimeType,
+		Size: media.Size, CreatedAt: media.CreatedAt,
+	}
+}
+
 type PostSummary struct {
 	ID          uint          `json:"id"`
 	Title       string        `json:"title"`

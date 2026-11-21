@@ -58,7 +58,9 @@ make docker-down   # 停止环境（保留数据卷）
 ## 功能
 
 - 公开文章分页、关键词搜索、分类与标签筛选、相关文章、关于页
-- 后台仪表盘、文章草稿/发布/定时发布、批量操作与回收站、分类标签管理、站点设置与密码修改
+- 文章评论区：访客填写 QQ 邮箱即可评论，无需审核即时显示，支持多层级回复
+- 后台仪表盘、文章草稿/发布/定时发布、批量操作与回收站、分类标签管理、评论管理、媒体库、站点设置与密码修改
+- 媒体库支持任意格式文件上传、预览、分类筛选与链接复制，上传文件按随机名存放
 - Vditor Markdown 编辑，goldmark 服务端过滤，react-markdown 前台渲染与代码高亮
 - JWT 短期访问令牌、HttpOnly 刷新 Cookie、Redis 会话旋转与注销
 - Redis 公开内容缓存及写入失效，缓存不可用时自动回源 MySQL
@@ -73,13 +75,15 @@ make docker-down   # 停止环境（保留数据卷）
 - `TRUSTED_PROXIES`：允许提供 `X-Forwarded-For` 的反向代理网段，Compose 默认 `172.16.0.0/12`
 - `COOKIE_SECURE`：仅在通过 HTTPS 提供服务时设为 `true`
 - `CORS_ORIGINS`：允许的来源白名单；配置为 `*` 时不会同时开启凭据
+- `UPLOAD_DIR`：上传文件目录，默认 `./uploads`；Docker 中使用 `uploads_data` 命名卷
+- `UPLOAD_MAX_MB`：单个文件上传上限，默认 64，允许 1-1024
 - 若通过域名或非 `localhost` 访问，必须把该来源加入 `CORS_ORIGINS`，否则刷新与注销请求会被同源校验拒绝
 
 生产环境还应关闭 `SEED_DEMO`，并把基础镜像固定到具体 digest（见 `deploy/*.Dockerfile` 顶部的 `ARG`）。
 
 ## 数据与安全
 
-Markdown 原文是唯一内容源。后端禁用原始 HTML 并使用白名单过滤，前台不启用 `rehype-raw`。数据库迁移位于 `migrations/`，容器数据保存在 `mysql_data` 与 `redis_data` 命名卷中。
+Markdown 原文是唯一内容源。后端禁用原始 HTML 并使用白名单过滤，前台不启用 `rehype-raw`。数据库迁移位于 `migrations/`，容器数据保存在 `mysql_data`、`redis_data` 与 `uploads_data` 命名卷中。
 
 安全设计要点：
 

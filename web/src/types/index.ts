@@ -129,3 +129,71 @@ export interface PasswordPayload {
   current_password: string;
   new_password: string;
 }
+
+export interface MediaItem {
+  id: number;
+  original_name: string;
+  url: string;
+  mime_type: string;
+  size: number;
+  created_at: string;
+}
+
+export type MediaKind = 'image' | 'video' | 'audio' | 'other';
+
+export interface MediaQuery {
+  page?: number;
+  page_size?: number;
+  keyword?: string;
+  kind?: MediaKind | '';
+}
+
+export interface CommentItem {
+  id: number;
+  post_id: number;
+  parent_id: number | null;
+  nickname: string;
+  avatar: string;
+  content: string;
+  created_at: string;
+  replies: CommentItem[];
+}
+
+export interface CommentList {
+  items: CommentItem[];
+  total: number;
+  comment_count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface CommentPayload {
+  nickname: string;
+  email: string;
+  qq?: string;
+  content: string;
+  parent_id?: number | null;
+  website?: string;
+}
+
+export interface AdminComment {
+  id: number;
+  post_id: number;
+  post_title: string;
+  post_slug: string;
+  parent_id: number | null;
+  parent_nickname: string;
+  nickname: string;
+  email: string;
+  qq: string;
+  content: string;
+  created_at: string;
+}
+
+export interface AdminCommentQuery {
+  page?: number;
+  page_size?: number;
+  keyword?: string;
+  post_id?: number;
+}

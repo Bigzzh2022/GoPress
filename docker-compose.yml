@@ -53,6 +53,8 @@ services:
       # every visitor would share the proxy address and one rate-limit bucket.
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      UPLOAD_DIR: /app/uploads
+      UPLOAD_MAX_MB: ${UPLOAD_MAX_MB:-64}
       ADMIN_NAME: ${ADMIN_NAME:-GoPress Admin}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@gopress.dev}
       # No default: the seed command refuses to create an administrator with a
@@ -63,6 +65,8 @@ services:
     # point; direct access would bypass its body limit and security headers.
     ports:
       - "127.0.0.1:8080:8080"
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       mysql:
         condition: service_healthy
@@ -96,3 +100,4 @@ services:
 volumes:
   mysql_data:
   redis_data:
+  uploads_data:

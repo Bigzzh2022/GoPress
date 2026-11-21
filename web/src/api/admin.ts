@@ -1,10 +1,14 @@
 import { api } from './client';
 import type {
+  AdminComment,
+  AdminCommentQuery,
   AdminPostQuery,
   ApiResponse,
   BatchAction,
   Category,
   DashboardData,
+  MediaItem,
+  MediaQuery,
   Paginated,
   PasswordPayload,
   PostDetail,
@@ -58,4 +62,15 @@ export const adminApi = {
   settings: () => unwrap(api.get<ApiResponse<SiteSettings>>('/admin/settings')),
   updateSettings: (payload: SiteSettings) =>
     unwrap(api.put<ApiResponse<SiteSettings>>('/admin/settings', payload)),
+  comments: (params: AdminCommentQuery) =>
+    unwrap(api.get<ApiResponse<Paginated<AdminComment>>>('/admin/comments', { params })),
+  deleteComment: (id: number) => api.delete(`/admin/comments/${id}`),
+  media: (params: MediaQuery) =>
+    unwrap(api.get<ApiResponse<Paginated<MediaItem>>>('/admin/media', { params })),
+  uploadMedia: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return unwrap(api.post<ApiResponse<MediaItem>>('/admin/media', form, { headers: { 'Content-Type': 'multipart/form-data' } }));
+  },
+  deleteMedia: (id: number) => api.delete(`/admin/media/${id}`),
 };

@@ -2,6 +2,9 @@ import { api } from './client';
 import type {
   ApiResponse,
   Category,
+  CommentItem,
+  CommentList,
+  CommentPayload,
   Paginated,
   PostDetail,
   PostQuery,
@@ -25,4 +28,8 @@ export const blogApi = {
   tags: () => unwrap(api.get<ApiResponse<Tag[]>>('/tags')),
   profile: () => unwrap(api.get<ApiResponse<PublicUser>>('/profile')),
   settings: () => unwrap(api.get<ApiResponse<SiteSettings>>('/settings')),
+  comments: (slug: string, params?: { page?: number; page_size?: number }) =>
+    unwrap(api.get<ApiResponse<CommentList>>(`/posts/${encodeURIComponent(slug)}/comments`, { params })),
+  createComment: (slug: string, payload: CommentPayload) =>
+    unwrap(api.post<ApiResponse<CommentItem>>(`/posts/${encodeURIComponent(slug)}/comments`, payload)),
 };

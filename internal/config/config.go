@@ -22,6 +22,8 @@ type Config struct {
 	CORSOrigins     []string
 	TrustedProxies  []string
 	CookieSecure    bool
+	UploadDir       string
+	MaxUploadBytes  int64
 	AdminName       string
 	AdminEmail      string
 	AdminPassword   string
@@ -83,6 +85,18 @@ func Load() (Config, error) {
 	}
 	if cfg.SeedDemo, err = getBool("SEED_DEMO", false); err != nil {
 		return Config{}, err
+	}
+	uploadMB, err := getInt("UPLOAD_MAX_MB", 64)
+	if err != nil {
+		return Config{}, err
+	}
+	if uploadMB < 1 || uploadMB > 1024 {
+		return Config{}, fmt.Errorf("UPLOAD_MAX_MB must be between 1 and 1024")
+	}
+	cfg.MaxUploadBytes = int64(uploadMB) * 1024 * 1024
+	cfg.UploadDir = strings.TrimSpace(getEnv("UPLOAD_DIR", "./uploads"))
+	if cfg.UploadDir == "" {
+		cfg.UploadDir = "./uploads"
 	}
 	if cfg.AccessTokenTTL <= 0 || cfg.RefreshTokenTTL <= 0 {
 		return Config{}, fmt.Errorf("token TTLs must be positive")

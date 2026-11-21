@@ -7,6 +7,7 @@ import { blogApi } from '../../api/blog';
 import { getErrorMessage } from '../../api/client';
 import { useDocumentTitle } from '../../app/hooks';
 import { CoverArt } from '../../components/CoverArt';
+import { CommentSection } from '../../components/CommentSection';
 import { ErrorState, LoadingSkeleton } from '../../components/Feedback';
 import { MarkdownContent } from '../../components/MarkdownContent';
 import { PostCard } from '../../components/PostCard';
@@ -73,6 +74,8 @@ export default function PostDetailPage() {
         <div><p>感谢读到这里。</p><span>如果这篇文章带来了启发，欢迎将它分享给同样热爱技术的人。</span></div>
         <button className="button button-outline" onClick={() => navigator.clipboard?.writeText(window.location.href)}>复制文章链接</button>
       </footer>
+
+      <CommentSection slug={slug} />
 
       {!!relatedQuery.data?.length && (
         <section className="related-section">
