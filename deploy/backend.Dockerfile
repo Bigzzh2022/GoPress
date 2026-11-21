@@ -3,6 +3,7 @@
 # Keeping them as build args lets operators freeze digests without editing this
 # file, while the default stays readable.
 ARG GO_IMAGE=golang:1.25-alpine
+ARG RUNTIME_IMAGE=alpine:3.21
 FROM ${GO_IMAGE} AS build
 WORKDIR /src
 ARG VERSION=dev
@@ -21,7 +22,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath \
         -ldflags="-s -w -X gopress/internal/buildinfo.Version=${VERSION} -X gopress/internal/buildinfo.Commit=${COMMIT} -X gopress/internal/buildinfo.BuildTime=${BUILD_TIME}" \
         -o /out/seed ./cmd/seed
 
-ARG RUNTIME_IMAGE=alpine:3.21
 FROM ${RUNTIME_IMAGE}
 RUN apk add --no-cache ca-certificates tzdata wget && adduser -D -u 10001 gopress
 WORKDIR /app
