@@ -61,6 +61,8 @@ make docker-down   # 停止环境（保留数据卷）
 - 文章评论区：访客填写 QQ 邮箱即可评论，无需审核即时显示，支持多层级回复
 - 后台仪表盘、文章草稿/发布/定时发布、批量操作与回收站、分类标签管理、评论管理、媒体库、站点设置与密码修改
 - 媒体库支持任意格式文件上传、预览、分类筛选与链接复制，上传文件按随机名存放
+- 后台「检查更新」对比 GitHub `main` 分支最新提交，展示落后提交与服务器更新步骤
+- GitHub Actions 自动测试并推送 GHCR 镜像，配合 `docker compose pull` 完成部署更新
 - Vditor Markdown 编辑，goldmark 服务端过滤，react-markdown 前台渲染与代码高亮
 - JWT 短期访问令牌、HttpOnly 刷新 Cookie、Redis 会话旋转与注销
 - Redis 公开内容缓存及写入失效，缓存不可用时自动回源 MySQL
@@ -77,9 +79,35 @@ make docker-down   # 停止环境（保留数据卷）
 - `CORS_ORIGINS`：允许的来源白名单；配置为 `*` 时不会同时开启凭据
 - `UPLOAD_DIR`：上传文件目录，默认 `./uploads`；Docker 中使用 `uploads_data` 命名卷
 - `UPLOAD_MAX_MB`：单个文件上传上限，默认 64，允许 1-1024
+- `GITHUB_REPO` / `GITHUB_BRANCH`：更新检查对比的仓库与分支，默认 `Bigzzh2022/GoPress` 与 `main`
+- `GITHUB_TOKEN`：可选的 GitHub 只读令牌，用于提高 API 限额或访问私有仓库
+- `GOPRESS_TAG`：Compose 使用的镜像标签，默认 `latest`，可固定为 `sha-xxxxxxx`
 - 若通过域名或非 `localhost` 访问，必须把该来源加入 `CORS_ORIGINS`，否则刷新与注销请求会被同源校验拒绝
 
 生产环境还应关闭 `SEED_DEMO`，并把基础镜像固定到具体 digest（见 `deploy/*.Dockerfile` 顶部的 `ARG`）。
+
+## 检查更新与 CI/CD
+
+后台「检查更新」页面会读取 `GITHUB_BRANCH`（默认 `main`）的最新提交，并与当前运行版本比较：
+
+- 构建时通过 ldflags 注入版本、提交与构建时间，Docker 构建参数和 `make build` 都会自动填充
+- 检查结果缓存 5 分钟，页面上的「重新检查」会强制刷新
+- 只读检查，不会在服务器上执行任何更新操作
+- GitHub 匿名 API 有频率限制，建议配置 `GITHUB_TOKEN`
+
+自动化流程：
+
+- `.github/workflows/ci.yml`：main 推送与 PR 时运行 `go vet`、后端测试、前端类型检查/测试/构建
+- `.github/workflows/publish.yml`：main 推送或手动触发时构建并推送 `ghcr.io/<owner>/gopress-api` 与 `ghcr.io/<owner>/gopress-web`，同时提供 `latest` 和 `sha-xxxxxxx` 标签
+
+服务器更新：
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+如需固定到某个提交，在 `.env` 中设置 `GOPRESS_TAG=sha-xxxxxxx`。GHCR 包默认私有，服务器拉取前需执行 `docker login ghcr.io`，或在 GitHub 包设置中改为公开。
 
 ## 数据与安全
 

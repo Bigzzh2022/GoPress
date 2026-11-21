@@ -5,14 +5,21 @@
 ARG GO_IMAGE=golang:1.25-alpine
 FROM ${GO_IMAGE} AS build
 WORKDIR /src
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILD_TIME=unknown
 RUN apk add --no-cache git
 COPY go.mod go.sum* ./
 RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 COPY migrations ./migrations
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/server ./cmd/server && \
-    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/seed ./cmd/seed
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath \
+        -ldflags="-s -w -X gopress/internal/buildinfo.Version=${VERSION} -X gopress/internal/buildinfo.Commit=${COMMIT} -X gopress/internal/buildinfo.BuildTime=${BUILD_TIME}" \
+        -o /out/server ./cmd/server && \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath \
+        -ldflags="-s -w -X gopress/internal/buildinfo.Version=${VERSION} -X gopress/internal/buildinfo.Commit=${COMMIT} -X gopress/internal/buildinfo.BuildTime=${BUILD_TIME}" \
+        -o /out/seed ./cmd/seed
 
 ARG RUNTIME_IMAGE=alpine:3.21
 FROM ${RUNTIME_IMAGE}

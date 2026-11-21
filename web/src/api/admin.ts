@@ -17,6 +17,7 @@ import type {
   PostSummary,
   SiteSettings,
   Tag,
+  UpdateStatus,
   User,
 } from '../types';
 
@@ -73,4 +74,6 @@ export const adminApi = {
     return unwrap(api.post<ApiResponse<MediaItem>>('/admin/media', form, { headers: { 'Content-Type': 'multipart/form-data' } }));
   },
   deleteMedia: (id: number) => api.delete(`/admin/media/${id}`),
+  checkUpdate: (force = false) =>
+    unwrap(api.get<ApiResponse<UpdateStatus>>('/admin/system/update', { params: force ? { force: 'true' } : undefined })),
 };

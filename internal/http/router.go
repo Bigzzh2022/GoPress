@@ -18,6 +18,7 @@ import (
 	"gopress/internal/modules/profile"
 	"gopress/internal/modules/settings"
 	"gopress/internal/modules/taxonomy"
+	"gopress/internal/modules/updates"
 	"gopress/internal/platform/cache"
 	"gopress/internal/platform/markdown"
 )
@@ -67,6 +68,11 @@ func NewRouter(cfg config.Config, db *gorm.DB, publicCache *cache.Cache) *gin.En
 	dashboardHandler := dashboard.NewHandler(db)
 	commentHandler := comments.NewHandler(comments.NewService(db))
 	mediaHandler := media.NewHandler(db, cfg.UploadDir, cfg.MaxUploadBytes)
+	updateHandler := updates.NewHandler(updates.NewService(updates.Config{
+		Repository: cfg.GitHubRepo,
+		Branch:     cfg.GitHubBranch,
+		Token:      cfg.GitHubToken,
+	}))
 
 	api := router.Group("/api/v1")
 	api.Use(middleware.BodyLimit(maxRequestBodyBytes))
@@ -122,6 +128,7 @@ func NewRouter(cfg config.Config, db *gorm.DB, publicCache *cache.Cache) *gin.En
 	admin.DELETE("/comments/:id", commentHandler.Delete)
 	admin.GET("/media", mediaHandler.List)
 	admin.DELETE("/media/:id", mediaHandler.Delete)
+	admin.GET("/system/update", updateHandler.Check)
 
 	// Uploads bypass the JSON body limit but keep the same authentication.
 	uploadAdmin := router.Group("/api/v1/admin",

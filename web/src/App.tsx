@@ -18,6 +18,7 @@ const TagsPage = lazy(() => import('./pages/admin/TagsPage'));
 const CommentsPage = lazy(() => import('./pages/admin/CommentsPage'));
 const MediaPage = lazy(() => import('./pages/admin/MediaPage'));
 const SettingsPage = lazy(() => import('./pages/admin/SettingsPage'));
+const SystemUpdatePage = lazy(() => import('./pages/admin/SystemUpdatePage'));
 const ProfilePage = lazy(() => import('./pages/admin/ProfilePage'));
 
 function RouteLoading() {
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="comments" element={load(<CommentsPage />)} />
             <Route path="media" element={load(<MediaPage />)} />
             <Route path="settings" element={load(<SettingsPage />)} />
+            <Route path="update" element={load(<SystemUpdatePage />)} />
             <Route path="profile" element={load(<ProfilePage />)} />
             <Route path="*" element={load(<NotFoundPage />)} />
           </Route>

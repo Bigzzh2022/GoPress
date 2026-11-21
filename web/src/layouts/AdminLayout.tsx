@@ -4,7 +4,7 @@ import {
   DashboardOutlined, FileTextOutlined, FolderOutlined, TagsOutlined,
   UserOutlined, MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined,
   GlobalOutlined, MenuOutlined, SettingOutlined, CommentOutlined,
-  PictureOutlined,
+  PictureOutlined, CloudSyncOutlined,
 } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
@@ -22,6 +22,7 @@ const menuItems = [
   { key: '/admin/tags', icon: <TagsOutlined />, label: '标签管理' },
   { key: '/admin/comments', icon: <CommentOutlined />, label: '评论管理' },
   { key: '/admin/media', icon: <PictureOutlined />, label: '媒体库' },
+  { key: '/admin/update', icon: <CloudSyncOutlined />, label: '检查更新' },
   { key: '/admin/settings', icon: <SettingOutlined />, label: '站点设置' },
   { key: '/admin/profile', icon: <UserOutlined />, label: '个人资料' },
 ];

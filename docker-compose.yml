@@ -31,9 +31,14 @@ services:
       retries: 20
 
   api:
+    image: ghcr.io/bigzzh2022/gopress-api:${GOPRESS_TAG:-latest}
     build:
       context: .
       dockerfile: deploy/backend.Dockerfile
+      args:
+        VERSION: ${GOPRESS_TAG:-dev}
+        COMMIT: ${GOPRESS_COMMIT:-unknown}
+        BUILD_TIME: ${GOPRESS_BUILD_TIME:-unknown}
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -61,6 +66,9 @@ services:
       # published password.
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
       SEED_DEMO: ${SEED_DEMO:-true}
+      GITHUB_REPO: ${GITHUB_REPO:-Bigzzh2022/GoPress}
+      GITHUB_BRANCH: ${GITHUB_BRANCH:-main}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     # Published on loopback only so the reverse proxy stays the single entry
     # point; direct access would bypass its body limit and security headers.
     ports:
@@ -80,6 +88,7 @@ services:
       start_period: 15s
 
   web:
+    image: ghcr.io/bigzzh2022/gopress-web:${GOPRESS_TAG:-latest}
     build:
       context: .
       dockerfile: deploy/frontend.Dockerfile

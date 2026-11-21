@@ -197,3 +197,33 @@ export interface AdminCommentQuery {
   keyword?: string;
   post_id?: number;
 }
+
+export interface BuildInfo {
+  version: string;
+  commit: string;
+  short_commit: string;
+  build_time: string;
+}
+
+export interface UpdateCommit {
+  sha: string;
+  short_sha: string;
+  message: string;
+  author: string;
+  date: string;
+  url: string;
+}
+
+export interface UpdateStatus {
+  repository: string;
+  branch: string;
+  current: BuildInfo;
+  latest: UpdateCommit | null;
+  behind: number;
+  update_available: boolean;
+  comparable: boolean;
+  compare_url: string;
+  commits: UpdateCommit[];
+  checked_at: string;
+  cached: boolean;
+}

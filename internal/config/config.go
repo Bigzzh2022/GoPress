@@ -24,6 +24,9 @@ type Config struct {
 	CookieSecure    bool
 	UploadDir       string
 	MaxUploadBytes  int64
+	GitHubRepo      string
+	GitHubBranch    string
+	GitHubToken     string
 	AdminName       string
 	AdminEmail      string
 	AdminPassword   string
@@ -97,6 +100,15 @@ func Load() (Config, error) {
 	cfg.UploadDir = strings.TrimSpace(getEnv("UPLOAD_DIR", "./uploads"))
 	if cfg.UploadDir == "" {
 		cfg.UploadDir = "./uploads"
+	}
+	cfg.GitHubRepo = strings.TrimSpace(getEnv("GITHUB_REPO", "Bigzzh2022/GoPress"))
+	cfg.GitHubBranch = strings.TrimSpace(getEnv("GITHUB_BRANCH", "main"))
+	cfg.GitHubToken = strings.TrimSpace(os.Getenv("GITHUB_TOKEN"))
+	if cfg.GitHubBranch == "" {
+		cfg.GitHubBranch = "main"
+	}
+	if parts := strings.Split(cfg.GitHubRepo, "/"); len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" {
+		return Config{}, fmt.Errorf("GITHUB_REPO must use the owner/repository format")
 	}
 	if cfg.AccessTokenTTL <= 0 || cfg.RefreshTokenTTL <= 0 {
 		return Config{}, fmt.Errorf("token TTLs must be positive")
